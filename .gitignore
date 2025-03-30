@@ -1,0 +1,4 @@
+.vscode/
+.pdm-python
+*.json
+logs
