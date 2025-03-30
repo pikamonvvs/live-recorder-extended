@@ -12,3 +12,7 @@ logs
 
 # LiveRecorder
 live-recorder/
+
+# PyInstaller
+build/
+dist/

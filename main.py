@@ -371,3 +371,5 @@ if __name__ == "__main__":
         asyncio.run(modified_run())
     except KeyboardInterrupt:
         logger.warning("프로그램이 강제 종료되었습니다.")
+    finally:
+        input("프로그램을 종료하려면 Enter 키를 누르세요...")
