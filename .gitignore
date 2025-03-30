@@ -3,7 +3,12 @@
 
 # Python
 .pdm-python
+__pycache__/
 
 # Project specific
+*.yaml
 *.json
 logs
+
+# LiveRecorder
+live-recorder/

@@ -26,6 +26,8 @@ from loguru import logger
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
+from utils import convert_yaml_to_json, is_yaml_changed
+
 # 플랫폼 클래스 매핑
 PLATFORM_CLASSES = {
     "Afreeca": Afreeca,
@@ -70,6 +72,12 @@ class ConfigFileHandler(FileSystemEventHandler):
         if str(event.src_path).endswith(CONFIG_FILE):
             logger.info(f"{CONFIG_FILE} 파일 변경 감지: {event.src_path}")
             asyncio.run_coroutine_threadsafe(handle_config_changes(), self.loop)
+        elif str(event.src_path).endswith("config.yaml"):
+            logger.info("config.yaml 파일 변경 감지")
+            try:
+                convert_yaml_to_json("config.yaml", CONFIG_FILE)
+            except Exception as e:
+                logger.error(f"YAML 변환 중 오류 발생: {str(e)}")
 
 
 async def create_recorder_instance(config: dict, item: dict) -> asyncio.Task:
@@ -170,14 +178,15 @@ class ConfigManager:
             return
 
         try:
+            # 태스크 취소를 먼저 수행
+            await ConfigManager.cancel_task(instance_key)
+
+            # 스트림 정리는 태스크 취소 후에 수행
             platform, user_id = instance_key
             stream_url = ConfigManager.get_stream_url(platform, user_id)
+            if stream_url:
+                await ConfigManager.close_stream(stream_url)
 
-            if not stream_url:
-                raise ValueError("잘못된 스트림 URL")
-
-            await ConfigManager.close_stream(stream_url)
-            await ConfigManager.cancel_task(instance_key)
         except Exception as e:
             logger.error(f"인스턴스 정리 중 오류 발생: {str(e)}")
             raise
@@ -289,13 +298,21 @@ async def handle_config_changes():
 async def modified_run():
     # 초기 설정 로드 및 감시 설정
     logger.info("프로그램 시작")
-    config_path = Path(CONFIG_FILE)
+
+    # YAML -> JSON 초기 변환
+    if Path("config.yaml").exists():
+        if is_yaml_changed("config.yaml", CONFIG_FILE):
+            logger.info("config.yaml 변경 감지됨, JSON으로 변환 중...")
+            convert_yaml_to_json("config.yaml", CONFIG_FILE)
+
+    config_dir = Path(CONFIG_FILE).parent
 
     # 현재 이벤트 루프 가져오기
     loop = asyncio.get_running_loop()
 
     observer = Observer()
-    observer.schedule(ConfigFileHandler(loop), str(config_path.parent), recursive=False)
+    handler = ConfigFileHandler(loop)
+    observer.schedule(handler, str(config_dir), recursive=False)
     observer.start()
     logger.info("파일 감시 시작")
 

@@ -1,0 +1,7 @@
+proxy: null
+output: "."
+groups:
+  - platform:
+    cookies:
+    users:
+      - id: 
